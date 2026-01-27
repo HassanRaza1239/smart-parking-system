@@ -1,4 +1,4 @@
-#ifndef ROLLBACKMANAGER_H
+﻿#ifndef ROLLBACKMANAGER_H
 #define ROLLBACKMANAGER_H
 
 #include "Zone.h"
@@ -30,6 +30,7 @@ struct RollbackOperation {
 class RollbackManager {
 private:
     RollbackOperation* undoStack;
+    bool executeUndo(RollbackOperation* op, ParkingRequest** requests, int requestCount, Zone** zones, int zoneCount);
     int maxUndoSteps;
     int currentSteps;
     

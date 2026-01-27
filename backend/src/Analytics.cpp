@@ -1,16 +1,14 @@
-#include "Analytics.h"
+﻿#include "../include/Analytics.h"
 #include <iostream>
-#include <sstream>
 #include <iomanip>
 #include <algorithm>
+#include <map>
 #include <vector>
+#include <utility>
 
-// Constructor
+// Analytics constructor
 Analytics::Analytics(ParkingRequest** reqArray, int reqCount, Zone** zoneArray, int zCount)
-    : requests(reqArray), requestCount(reqCount), zones(zoneArray), zoneCount(zCount) {
-    std::cout << "Analytics engine initialized with " << reqCount 
-              << " requests and " << zCount << " zones" << std::endl;
-}
+    : requests(reqArray), requestCount(reqCount), zones(zoneArray), zoneCount(zCount) {}
 
 // Get average parking duration
 double Analytics::getAverageParkingDuration() const {
@@ -26,10 +24,11 @@ double Analytics::getAverageParkingDuration() const {
         }
     }
     
-    return completedCount > 0 ? totalDuration / completedCount : 0.0;
+    if (completedCount == 0) return 0.0;
+    return totalDuration / completedCount;
 }
 
-// Get utilization rate for specific zone
+// Get zone utilization rate
 double Analytics::getZoneUtilizationRate(const std::string& zoneId) const {
     for (int i = 0; i < zoneCount; i++) {
         if (zones[i]->getZoneId() == zoneId) {
@@ -39,7 +38,7 @@ double Analytics::getZoneUtilizationRate(const std::string& zoneId) const {
     return 0.0;
 }
 
-// Get utilization rates for all zones
+// Get all zone utilization rates
 std::vector<double> Analytics::getAllZoneUtilizationRates() const {
     std::vector<double> rates;
     for (int i = 0; i < zoneCount; i++) {
@@ -73,54 +72,71 @@ int Analytics::getCancelledRequests() const {
 // Get completion rate
 double Analytics::getCompletionRate() const {
     if (requestCount == 0) return 0.0;
-    return (getCompletedRequests() * 100.0) / requestCount;
+    return (static_cast<double>(getCompletedRequests()) / requestCount) * 100.0;
 }
 
 // Get cancellation rate
 double Analytics::getCancellationRate() const {
     if (requestCount == 0) return 0.0;
-    return (getCancelledRequests() * 100.0) / requestCount;
+    return (static_cast<double>(getCancelledRequests()) / requestCount) * 100.0;
 }
 
 // Get peak usage zone
 std::string Analytics::getPeakUsageZone() const {
-    if (zoneCount == 0) return "";
+    if (requestCount == 0) return "No requests";
     
-    Zone* peakZone = zones[0];
-    double maxUtilization = peakZone->getUtilizationRate();
+    std::map<std::string, int> zoneCounts;
     
-    for (int i = 1; i < zoneCount; i++) {
-        double utilization = zones[i]->getUtilizationRate();
-        if (utilization > maxUtilization) {
-            maxUtilization = utilization;
-            peakZone = zones[i];
+    // Count allocations per zone
+    for (int i = 0; i < requestCount; i++) {
+        std::string zone = requests[i]->getAllocatedZone();
+        if (!zone.empty()) {
+            zoneCounts[zone]++;
         }
     }
     
-    return peakZone->getZoneId();
+    // Find zone with max count
+    std::string peakZone;
+    int maxCount = 0;
+    
+    for (const auto& pair : zoneCounts) {
+        if (pair.second > maxCount) {
+            maxCount = pair.second;
+            peakZone = pair.first;
+        }
+    }
+    
+    return peakZone.empty() ? "No allocations" : peakZone;
 }
 
 // Get top N peak usage zones
 std::vector<std::string> Analytics::getPeakUsageZones(int topN) const {
-    std::vector<std::pair<double, std::string>> zoneUtilizations;
+    std::map<std::string, int> zoneCounts;
     
-    for (int i = 0; i < zoneCount; i++) {
-        zoneUtilizations.push_back(
-            std::make_pair(zones[i]->getUtilizationRate(), zones[i]->getZoneId())
-        );
+    // Count allocations per zone
+    for (int i = 0; i < requestCount; i++) {
+        std::string zone = requests[i]->getAllocatedZone();
+        if (!zone.empty()) {
+            zoneCounts[zone]++;
+        }
     }
     
-    // Sort by utilization (descending)
-    std::sort(zoneUtilizations.begin(), zoneUtilizations.end(),
+    // Convert to vector for sorting
+    std::vector<std::pair<std::string, int>> zonesVector(zoneCounts.begin(), zoneCounts.end());
+    
+    // Sort by count (descending)
+    std::sort(zonesVector.begin(), zonesVector.end(),
               [](const auto& a, const auto& b) {
-                  return a.first > b.first;
+                  return a.second > b.second;
               });
     
     // Get top N
     std::vector<std::string> result;
-    int limit = std::min(topN, (int)zoneUtilizations.size());
-    for (int i = 0; i < limit; i++) {
-        result.push_back(zoneUtilizations[i].second);
+    int count = 0;
+    for (const auto& pair : zonesVector) {
+        if (count >= topN) break;
+        result.push_back(pair.first + " (" + std::to_string(pair.second) + " requests)");
+        count++;
     }
     
     return result;
@@ -139,36 +155,37 @@ double Analytics::getTotalRevenue() const {
 
 // Get average revenue per hour
 double Analytics::getAverageRevenuePerHour() const {
-    double totalDuration = 0.0;
-    double totalRevenue = getTotalRevenue();
+    int completed = getCompletedRequests();
+    if (completed == 0) return 0.0;
     
+    double totalDuration = 0.0;
     for (int i = 0; i < requestCount; i++) {
         if (requests[i]->getState() == RELEASED) {
             totalDuration += requests[i]->getDuration();
         }
     }
     
-    return totalDuration > 0 ? totalRevenue / totalDuration : 0.0;
+    if (totalDuration == 0.0) return 0.0;
+    return getTotalRevenue() / totalDuration;
 }
 
 // Get revenue by zone
 double Analytics::getRevenueByZone(const std::string& zoneId) const {
-    double revenue = 0.0;
+    double total = 0.0;
     for (int i = 0; i < requestCount; i++) {
         if (requests[i]->getState() == RELEASED && 
             requests[i]->getAllocatedZone() == zoneId) {
-            revenue += requests[i]->getTotalCost();
+            total += requests[i]->getTotalCost();
         }
     }
-    return revenue;
+    return total;
 }
 
 // Get cross-zone allocations count
 int Analytics::getCrossZoneAllocations() const {
     int count = 0;
     for (int i = 0; i < requestCount; i++) {
-        if (requests[i]->getState() != REQUESTED && 
-            requests[i]->getState() != CANCELLED &&
+        if (requests[i]->getState() == RELEASED && 
             requests[i]->getIsCrossZone()) {
             count++;
         }
@@ -176,67 +193,51 @@ int Analytics::getCrossZoneAllocations() const {
     return count;
 }
 
-// Get cross-zone rate
+// Get cross-zone allocation rate
 double Analytics::getCrossZoneRate() const {
-    int allocatedCount = 0;
-    for (int i = 0; i < requestCount; i++) {
-        if (requests[i]->getState() != REQUESTED && 
-            requests[i]->getState() != CANCELLED) {
-            allocatedCount++;
-        }
-    }
+    int completed = getCompletedRequests();
+    if (completed == 0) return 0.0;
     
-    return allocatedCount > 0 ? 
-           (getCrossZoneAllocations() * 100.0) / allocatedCount : 0.0;
+    return (static_cast<double>(getCrossZoneAllocations()) / completed) * 100.0;
 }
 
 // Display summary
 void Analytics::displaySummary() const {
-    std::cout << "\n=== Parking System Analytics Summary ===" << std::endl;
+    std::cout << "\n=== PARKING ANALYTICS SUMMARY ===" << std::endl;
     std::cout << "Total Requests: " << requestCount << std::endl;
     std::cout << "Completed: " << getCompletedRequests() 
-              << " (" << std::fixed << std::setprecision(1) 
-              << getCompletionRate() << "%)" << std::endl;
+              << " (" << std::fixed << std::setprecision(1) << getCompletionRate() << "%)" << std::endl;
     std::cout << "Cancelled: " << getCancelledRequests() 
-              << " (" << std::fixed << std::setprecision(1) 
-              << getCancellationRate() << "%)" << std::endl;
+              << " (" << std::fixed << std::setprecision(1) << getCancellationRate() << "%)" << std::endl;
     std::cout << "Average Duration: " << std::fixed << std::setprecision(1) 
               << getAverageParkingDuration() << " hours" << std::endl;
     std::cout << "Total Revenue: $" << std::fixed << std::setprecision(2) 
               << getTotalRevenue() << std::endl;
+    std::cout << "Average Revenue/Hour: $" << std::fixed << std::setprecision(2) 
+              << getAverageRevenuePerHour() << std::endl;
     std::cout << "Cross-Zone Allocations: " << getCrossZoneAllocations() 
-              << " (" << std::fixed << std::setprecision(1) 
-              << getCrossZoneRate() << "%)" << std::endl;
+              << " (" << std::fixed << std::setprecision(1) << getCrossZoneRate() << "%)" << std::endl;
     std::cout << "Peak Usage Zone: " << getPeakUsageZone() << std::endl;
-    std::cout << "=====================================\n" << std::endl;
 }
 
 // Display detailed report
 void Analytics::displayDetailedReport() const {
     displaySummary();
     
-    std::cout << "=== Zone-wise Details ===" << std::endl;
+    std::cout << "\n=== ZONE UTILIZATION ===" << std::endl;
     for (int i = 0; i < zoneCount; i++) {
         std::cout << zones[i]->getZoneId() << ": " 
-                  << std::fixed << std::setprecision(1)
-                  << zones[i]->getUtilizationRate() << "% utilized | "
-                  << "Revenue: $" << std::fixed << std::setprecision(2)
+                  << std::fixed << std::setprecision(1) 
+                  << zones[i]->getUtilizationRate() << "% | Revenue: $" 
+                  << std::fixed << std::setprecision(2) 
                   << getRevenueByZone(zones[i]->getZoneId()) << std::endl;
     }
     
-    std::cout << "\n=== Top 3 Busiest Zones ===" << std::endl;
-    std::vector<std::string> peakZones = getPeakUsageZones(3);
-    for (size_t i = 0; i < peakZones.size(); i++) {
-        std::cout << i + 1 << ". " << peakZones[i] << " (" 
-                  << std::fixed << std::setprecision(1)
-                  << getZoneUtilizationRate(peakZones[i]) << "%)" << std::endl;
+    std::cout << "\n=== TOP ZONES BY USAGE ===" << std::endl;
+    std::vector<std::string> topZones = getPeakUsageZones(3);
+    for (size_t i = 0; i < topZones.size(); i++) {
+        std::cout << i + 1 << ". " << topZones[i] << std::endl;
     }
-    
-    std::cout << "\n=== Revenue Analysis ===" << std::endl;
-    std::cout << "Average Revenue/Hour: $" << std::fixed << std::setprecision(2)
-              << getAverageRevenuePerHour() << std::endl;
-              
-    std::cout << "\n=====================================\n" << std::endl;
 }
 
 // Generate report string
@@ -247,10 +248,7 @@ std::string Analytics::generateReport() const {
     ss << "Total Requests: " << requestCount << "\n";
     ss << "Completed: " << getCompletedRequests() << "\n";
     ss << "Cancelled: " << getCancelledRequests() << "\n";
-    ss << "Average Duration: " << std::fixed << std::setprecision(1) 
-       << getAverageParkingDuration() << " hours\n";
-    ss << "Total Revenue: $" << std::fixed << std::setprecision(2) 
-       << getTotalRevenue() << "\n";
-    
+    ss << "Total Revenue: $" << std::fixed << std::setprecision(2) << getTotalRevenue() << "\n";
+    ss << "Cross-Zone Rate: " << std::fixed << std::setprecision(1) << getCrossZoneRate() << "%\n";
     return ss.str();
 }

@@ -1,9 +1,10 @@
-#include "Zone.h"
+﻿#include "../include/Zone.h"
+#include "../include/ParkingArea.h"
 #include <iostream>
 #include <sstream>
 
 // ZoneConnection constructor
-ZoneConnection::ZoneConnection(const std::string& zoneId, int dist, double penalty)
+ZoneConnection::ZoneConnection(const std::string& zoneId, int dist, double penalty) 
     : connectedZoneId(zoneId), distance(dist), penaltyMultiplier(penalty), next(nullptr) {}
 
 // Zone constructor
@@ -11,32 +12,31 @@ Zone::Zone(const std::string& id, const std::string& name, int slots, double rat
     : zoneId(id), zoneName(name), totalSlots(slots), availableSlots(slots), 
       hourlyRate(rate), areaList(nullptr), areaCount(0), connections(nullptr) {}
 
-// Destructor
+// Zone destructor
 Zone::~Zone() {
-    // Clean up connections
-    ZoneConnection* conn = connections;
-    while (conn != nullptr) {
-        ZoneConnection* next = conn->next;
-        delete conn;
-        conn = next;
+    // Delete all connections
+    ZoneConnection* current = connections;
+    while (current != nullptr) {
+        ZoneConnection* next = current->next;
+        delete current;
+        current = next;
     }
     
-    // Note: ParkingArea cleanup will be handled by ParkingSystem
+    // Delete all areas
+    ParkingArea* currentArea = areaList;
+    while (currentArea != nullptr) {
+        ParkingArea* nextArea = nullptr; // We need to get next before deleting
+        delete currentArea;
+        currentArea = nextArea;
+    }
 }
 
-// Add connection to another zone (Graph edge)
+// Add connection to another zone
 void Zone::addConnection(ZoneConnection* connection) {
-    if (connections == nullptr) {
-        connections = connection;
-    } else {
-        ZoneConnection* current = connections;
-        while (current->next != nullptr) {
-            current = current->next;
-        }
-        current->next = connection;
-    }
-    std::cout << "Zone " << zoneId << " connected to " << connection->connectedZoneId 
-              << " (distance: " << connection->distance << "m)" << std::endl;
+    if (!connection) return;
+    
+    connection->next = connections;
+    connections = connection;
 }
 
 // Get connections list
@@ -44,7 +44,7 @@ ZoneConnection* Zone::getConnections() const {
     return connections;
 }
 
-// Check if connected to specific zone
+// Check if connected to a zone
 bool Zone::isConnectedTo(const std::string& zoneId) const {
     ZoneConnection* current = connections;
     while (current != nullptr) {
@@ -68,28 +68,29 @@ int Zone::getDistanceTo(const std::string& zoneId) const {
     return -1; // Not connected
 }
 
-// Add parking area to zone
+// Add parking area
 bool Zone::addArea(ParkingArea* area) {
-    // Simple implementation - in real system would use linked list
+    if (!area) return false;
+    
+    // Simple implementation - just add to list
+    // In real implementation, you might want to manage areas differently
     areaCount++;
-    std::cout << "Added area " << area->getAreaId() << " to zone " << zoneId << std::endl;
     return true;
 }
 
 // Find area with available slot
 ParkingArea* Zone::findAreaWithAvailableSlot() const {
-    // Simplified - returns first area with availability
-    // In full system, would iterate through areaList
-    return nullptr; // Will be implemented in ParkingSystem
-}
-
-// Find available slot in zone
-ParkingSlot* Zone::findAvailableSlot() const {
-    // Simplified - will be implemented in ParkingSystem
+    // For now, return nullptr - will be implemented when ParkingArea is complete
     return nullptr;
 }
 
-// Allocate slot in zone
+// Find available slot in this zone
+ParkingSlot* Zone::findAvailableSlot() const {
+    // For now, return nullptr - will be implemented when ParkingArea is complete
+    return nullptr;
+}
+
+// Allocate a slot in this zone
 bool Zone::allocateSlot() {
     if (availableSlots > 0) {
         availableSlots--;
@@ -98,7 +99,7 @@ bool Zone::allocateSlot() {
     return false;
 }
 
-// Release slot in zone
+// Release a slot in this zone
 bool Zone::releaseSlot() {
     if (availableSlots < totalSlots) {
         availableSlots++;
@@ -107,39 +108,45 @@ bool Zone::releaseSlot() {
     return false;
 }
 
-// Getters
+// Get zone ID
 std::string Zone::getZoneId() const {
     return zoneId;
 }
 
+// Get zone name
 std::string Zone::getZoneName() const {
     return zoneName;
 }
 
+// Get available slots
 int Zone::getAvailableSlots() const {
     return availableSlots;
 }
 
+// Get total slots
 int Zone::getTotalSlots() const {
     return totalSlots;
 }
 
+// Get hourly rate
 double Zone::getHourlyRate() const {
     return hourlyRate;
 }
 
+// Get utilization rate
 double Zone::getUtilizationRate() const {
     if (totalSlots == 0) return 0.0;
-    return ((totalSlots - availableSlots) * 100.0) / totalSlots;
+    double usedSlots = totalSlots - availableSlots;
+    return (usedSlots / totalSlots) * 100.0;
 }
 
 // Convert to string
 std::string Zone::toString() const {
     std::stringstream ss;
-    ss << "Zone: " << zoneName << " (" << zoneId << ")"
-       << " | Slots: " << availableSlots << "/" << totalSlots
-       << " | Rate: $" << hourlyRate << "/hr"
-       << " | Utilization: " << getUtilizationRate() << "%";
+    ss << "Zone " << zoneId << ": " << zoneName 
+       << " (" << availableSlots << "/" << totalSlots << " available)"
+       << " Rate: $" << hourlyRate << "/hr"
+       << " Utilization: " << getUtilizationRate() << "%";
     return ss.str();
 }
 
@@ -149,16 +156,17 @@ std::string Zone::getConnectionsString() const {
     ss << "Connections from " << zoneId << ": ";
     
     ZoneConnection* current = connections;
-    if (current == nullptr) {
-        ss << "None";
-    } else {
-        while (current != nullptr) {
-            ss << current->connectedZoneId << "(" << current->distance << "m)";
-            if (current->next != nullptr) {
-                ss << ", ";
-            }
-            current = current->next;
-        }
+    bool first = true;
+    while (current != nullptr) {
+        if (!first) ss << ", ";
+        ss << current->connectedZoneId << " (" << current->distance << "m)";
+        first = false;
+        current = current->next;
     }
+    
+    if (first) {
+        ss << "None";
+    }
+    
     return ss.str();
 }

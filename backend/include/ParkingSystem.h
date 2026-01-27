@@ -12,6 +12,8 @@
 
 class ParkingSystem {
 private:
+    void updateAnalytics();
+    
     Zone** zones;
     int zoneCount;
     std::vector<Vehicle*> vehicles;

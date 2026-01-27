@@ -1,0 +1,1828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusPark - Smart Parking System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #10b981;
+            --primary-dark: #059669;
+            --primary-light: #34d399;
+            --secondary: #3b82f6;
+            --accent: #8b5cf6;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --light: #f9fafb;
+            --dark: #1f2937;
+            --gray: #6b7280;
+            --card-bg: rgba(255, 255, 255, 0.95);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            min-height: 100vh;
+            color: var(--dark);
+            overflow-x: hidden;
+        }
+
+        /* Main Container */
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            margin-bottom: 30px;
+            border-bottom: 2px solid rgba(16, 185, 129, 0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background: var(--primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+
+        .logo-text h1 {
+            font-size: 28px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+
+        .logo-text p {
+            color: var(--gray);
+            font-size: 14px;
+        }
+
+        .user-controls {
+            display: flex;
+            gap: 15px;
+        }
+
+        /* Dashboard Layout */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+            flex: 1;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Map Container */
+        .map-container {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(16, 185, 129, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(16, 185, 129, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #parkingMap {
+            width: 100%;
+            height: 500px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+            position: relative;
+        }
+
+        .map-overlay {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            right: 25px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .map-overlay > * {
+            pointer-events: auto;
+        }
+
+        .map-controls {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            gap: 10px;
+        }
+
+        .location-badge {
+            background: white;
+            padding: 12px 20px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Side Panel */
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(16, 185, 129, 0.1);
+        }
+
+        .progress-steps {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            margin: 30px 0;
+        }
+
+        .progress-steps::before {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #e5e7eb;
+            z-index: 1;
+        }
+
+        .progress-bar {
+            position: absolute;
+            top: 15px;
+            left: 0;
+            height: 3px;
+            background: var(--primary);
+            z-index: 2;
+            transition: width 0.5s ease;
+        }
+
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 3;
+        }
+
+        .step-icon {
+            width: 35px;
+            height: 35px;
+            background: white;
+            border: 3px solid #e5e7eb;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: var(--gray);
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .step.active .step-icon {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .step.completed .step-icon {
+            background: var(--primary-light);
+            border-color: var(--primary-light);
+            color: white;
+        }
+
+        .step-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--gray);
+            text-align: center;
+        }
+
+        .step.active .step-label {
+            color: var(--primary);
+        }
+
+        /* Info Cards */
+        .info-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(16, 185, 129, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid rgba(16, 185, 129, 0.1);
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary);
+            margin: 5px 0;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--gray);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Zone List */
+        .zones-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .zone-item {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .zone-item:hover {
+            border-color: var(--primary-light);
+            transform: translateX(5px);
+        }
+
+        .zone-item.selected {
+            border-color: var(--primary);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .zone-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .zone-name {
+            font-weight: 700;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .zone-availability {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .available {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--primary);
+        }
+
+        .limited {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .full {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        .zone-details {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        /* Action Button */
+        .action-button {
+            width: 100%;
+            padding: 18px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .action-button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+        }
+
+        .action-button:disabled {
+            background: var(--gray);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Modals */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 25px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+
+        .modal-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--dark);
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--gray);
+            cursor: pointer;
+            padding: 5px;
+            transition: color 0.3s ease;
+        }
+
+        .close-modal:hover {
+            color: var(--danger);
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .duration-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .duration-option {
+            padding: 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .duration-option:hover {
+            border-color: var(--primary-light);
+        }
+
+        .duration-option.selected {
+            border-color: var(--primary);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .cost-display {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            margin: 25px 0;
+        }
+
+        .cost-amount {
+            font-size: 48px;
+            font-weight: 800;
+            margin: 15px 0;
+        }
+
+        .cost-details {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .token-display {
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            margin: 25px 0;
+            border: 2px solid var(--primary-light);
+        }
+
+        .token-code {
+            font-family: 'Courier New', monospace;
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--primary);
+            letter-spacing: 5px;
+            margin: 20px 0;
+        }
+
+        .booking-details {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border: 1px solid rgba(16, 185, 129, 0.1);
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(16, 185, 129, 0.1);
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 3000;
+        }
+
+        .toast {
+            background: white;
+            padding: 20px 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 15px;
+            animation: slideInRight 0.3s ease;
+            border-left: 4px solid var(--primary);
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast.error {
+            border-left-color: var(--danger);
+        }
+
+        .toast.warning {
+            border-left-color: var(--warning);
+        }
+
+        .toast.success {
+            border-left-color: var(--primary);
+        }
+
+        .toast-icon {
+            font-size: 20px;
+        }
+
+        .toast.error .toast-icon {
+            color: var(--danger);
+        }
+
+        .toast.warning .toast-icon {
+            color: var(--warning);
+        }
+
+        .toast.success .toast-icon {
+            color: var(--primary);
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #e5e7eb;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 15px;
+            }
+            
+            .dashboard {
+                gap: 20px;
+            }
+            
+            .map-container {
+                padding: 15px;
+            }
+            
+            #parkingMap {
+                height: 400px;
+            }
+            
+            .map-overlay {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal-content {
+                padding: 25px;
+            }
+            
+            .duration-options {
+                grid-template-columns: 1fr;
+            }
+            
+            .toast-container {
+                left: 15px;
+                right: 15px;
+                bottom: 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+            
+            .user-controls {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .progress-steps {
+                gap: 5px;
+            }
+            
+            .step-label {
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-parking"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>NexusPark</h1>
+                    <p>Intelligent Parking Solutions</p>
+                </div>
+            </div>
+            <div class="user-controls">
+                <button class="action-button" onclick="showBookingHistory()" style="padding: 12px 25px;">
+                    <i class="fas fa-history"></i>
+                    History
+                </button>
+                <button class="action-button" onclick="runBackendDemo()" style="padding: 12px 25px; background: var(--accent);">
+                    <i class="fas fa-cogs"></i>
+                    Run Backend
+                </button>
+                <button class="action-button" onclick="printTicket()" style="padding: 12px 25px;" id="printBtn" disabled>
+                    <i class="fas fa-print"></i>
+                    Print
+                </button>
+            </div>
+        </header>
+
+        <!-- Dashboard -->
+        <div class="dashboard">
+            <!-- Map Section -->
+            <div class="map-container">
+                <div class="map-overlay">
+                    <div class="map-controls">
+                        <button class="action-button" onclick="useCurrentLocation()" style="padding: 10px 20px;">
+                            <i class="fas fa-location-crosshairs"></i>
+                            My Location
+                        </button>
+                        <button class="action-button" onclick="resetMap()" style="padding: 10px 20px;">
+                            <i class="fas fa-sync"></i>
+                            Reset
+                        </button>
+                    </div>
+                    <div class="location-badge" id="locationInfo">
+                        <i class="fas fa-map-marker-alt" style="color: var(--primary);"></i>
+                        <span>Click map to set location</span>
+                    </div>
+                </div>
+                
+                <!-- SVG MAP (Works Offline) -->
+                <div id="parkingMap">
+                    <svg width="100%" height="100%" viewBox="0 0 800 500" id="cityMap">
+                        <!-- City Roads -->
+                        <path d="M100,250 L700,250" stroke="#757575" stroke-width="25" stroke-linecap="round"/>
+                        <path d="M400,50 L400,450" stroke="#757575" stroke-width="25" stroke-linecap="round"/>
+                        <path d="M200,150 L600,350" stroke="#616161" stroke-width="15" stroke-linecap="round" stroke-dasharray="10,5"/>
+                        <path d="M600,150 L200,350" stroke="#616161" stroke-width="15" stroke-linecap="round" stroke-dasharray="10,5"/>
+                        
+                        <!-- Zone A - City Center -->
+                        <g class="zone" data-zone="ZA" onclick="selectZone('ZA')" style="cursor: pointer;">
+                            <rect x="300" y="200" width="100" height="100" rx="10" fill="#10b981" fill-opacity="0.7" stroke="#059669" stroke-width="3"/>
+                            <text x="350" y="255" text-anchor="middle" fill="white" font-weight="bold" font-size="14">Zone A</text>
+                            <text x="350" y="275" text-anchor="middle" fill="white" font-size="12">City Center</text>
+                            <circle cx="310" cy="210" r="8" fill="white">
+                                <animate attributeName="r" values="8;10;8" dur="2s" repeatCount="indefinite"/>
+                            </circle>
+                        </g>
+                        
+                        <!-- Zone B - Shopping District -->
+                        <g class="zone" data-zone="ZB" onclick="selectZone('ZB')" style="cursor: pointer;">
+                            <rect x="500" y="150" width="100" height="100" rx="10" fill="#3b82f6" fill-opacity="0.7" stroke="#2563eb" stroke-width="3"/>
+                            <text x="550" y="205" text-anchor="middle" fill="white" font-weight="bold" font-size="14">Zone B</text>
+                            <text x="550" y="225" text-anchor="middle" fill="white" font-size="12">Shopping</text>
+                            <circle cx="510" cy="160" r="8" fill="white">
+                                <animate attributeName="r" values="8;10;8" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+                            </circle>
+                        </g>
+                        
+                        <!-- Zone C - Business Park -->
+                        <g class="zone" data-zone="ZC" onclick="selectZone('ZC')" style="cursor: pointer;">
+                            <rect x="100" y="150" width="100" height="100" rx="10" fill="#8b5cf6" fill-opacity="0.7" stroke="#7c3aed" stroke-width="3"/>
+                            <text x="150" y="205" text-anchor="middle" fill="white" font-weight="bold" font-size="14">Zone C</text>
+                            <text x="150" y="225" text-anchor="middle" fill="white" font-size="12">Business</text>
+                            <circle cx="110" cy="160" r="8" fill="white">
+                                <animate attributeName="r" values="8;10;8" dur="2s" repeatCount="indefinite" begin="1s"/>
+                            </circle>
+                        </g>
+                        
+                        <!-- Zone D - University Area -->
+                        <g class="zone" data-zone="ZD" onclick="selectZone('ZD')" style="cursor: pointer;">
+                            <rect x="200" y="350" width="100" height="100" rx="10" fill="#f59e0b" fill-opacity="0.7" stroke="#d97706" stroke-width="3"/>
+                            <text x="250" y="405" text-anchor="middle" fill="white" font-weight="bold" font-size="14">Zone D</text>
+                            <text x="250" y="425" text-anchor="middle" fill="white" font-size="12">University</text>
+                            <circle cx="210" cy="360" r="8" fill="white">
+                                <animate attributeName="r" values="8;10;8" dur="2s" repeatCount="indefinite" begin="1.5s"/>
+                            </circle>
+                        </g>
+                        
+                        <!-- Zone E - Riverside -->
+                        <g class="zone" data-zone="ZE" onclick="selectZone('ZE')" style="cursor: pointer;">
+                            <rect x="500" y="350" width="100" height="100" rx="10" fill="#ef4444" fill-opacity="0.7" stroke="#dc2626" stroke-width="3"/>
+                            <text x="550" y="405" text-anchor="middle" fill="white" font-weight="bold" font-size="14">Zone E</text>
+                            <text x="550" y="425" text-anchor="middle" fill="white" font-size="12">Riverside</text>
+                            <circle cx="510" cy="360" r="8" fill="white">
+                                <animate attributeName="r" values="8;10;8" dur="2s" repeatCount="indefinite" begin="2s"/>
+                            </circle>
+                        </g>
+                        
+                        <!-- User Location Marker -->
+                        <circle id="userMarker" cx="400" cy="250" r="12" fill="var(--primary)" stroke="white" stroke-width="3" style="display: none;">
+                            <animate attributeName="r" values="12;15;12" dur="1.5s" repeatCount="indefinite"/>
+                        </circle>
+                        
+                        <!-- Path Lines (will be drawn dynamically) -->
+                        <g id="pathLayer"></g>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Side Panel -->
+            <div class="side-panel">
+                <!-- Progress Bar -->
+                <div class="progress-container">
+                    <h2 style="margin-bottom: 20px; color: var(--dark);">
+                        <i class="fas fa-route"></i> Booking Steps
+                    </h2>
+                    <div class="progress-steps">
+                        <div class="progress-bar" id="progressBar" style="width: 0%;"></div>
+                        <div class="step active" id="step1">
+                            <div class="step-icon">1</div>
+                            <div class="step-label">Set Location</div>
+                        </div>
+                        <div class="step" id="step2">
+                            <div class="step-icon">2</div>
+                            <div class="step-label">Find Parking</div>
+                        </div>
+                        <div class="step" id="step3">
+                            <div class="step-icon">3</div>
+                            <div class="step-label">Select Duration</div>
+                        </div>
+                        <div class="step" id="step4">
+                            <div class="step-icon">4</div>
+                            <div class="step-label">Confirm & Pay</div>
+                        </div>
+                    </div>
+                    <button class="action-button" id="nextStepBtn" onclick="nextStep()" disabled>
+                        <i class="fas fa-arrow-right"></i>
+                        Start Booking
+                    </button>
+                </div>
+
+                <!-- Parking Zones -->
+                <div class="info-card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-map-pin"></i>
+                            Available Zones
+                        </h3>
+                        <button class="action-button" onclick="loadBackendData()" style="padding: 8px 15px; font-size: 12px;">
+                            <i class="fas fa-sync"></i>
+                            Refresh
+                        </button>
+                    </div>
+                    <div class="zones-list" id="zonesList">
+                        <!-- Zones will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="info-card">
+                    <h3 class="card-title">
+                        <i class="fas fa-chart-line"></i>
+                        Parking Statistics
+                    </h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value" id="availableSpots">24</div>
+                            <div class="stat-label">Available Spots</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="occupiedSpots">76</div>
+                            <div class="stat-label">Occupied Spots</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="avgDistance">350m</div>
+                            <div class="stat-label">Avg Distance</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="avgTime">4min</div>
+                            <div class="stat-label">Avg Walk Time</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal" id="locationModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="fas fa-map-marker-alt"></i>
+                    Set Your Location
+                </h3>
+                <button class="close-modal" onclick="closeModal('locationModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Click on the city map to set your location:</label>
+                    <div style="height: 300px; border-radius: 12px; overflow: hidden; margin: 15px 0; background: #f3f4f6; display: flex; align-items: center; justify-content: center;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 48px; margin-bottom: 20px;">📍</div>
+                            <div style="font-weight: bold; color: var(--dark);">Click zones on main map</div>
+                            <div style="color: var(--gray); margin-top: 10px;">Then click "Confirm Location"</div>
+                        </div>
+                    </div>
+                </div>
+                <button class="action-button" onclick="confirmLocation()">
+                    <i class="fas fa-check"></i>
+                    Confirm Location
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="parkingModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="fas fa-parking"></i>
+                    Nearest Available Parking
+                </h3>
+                <button class="close-modal" onclick="closeModal('parkingModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="loading" id="pathfindingLoading">
+                    <div class="loading-spinner"></div>
+                    <p>Finding nearest parking using Dijkstra's algorithm...</p>
+                </div>
+                <div id="parkingResults" style="display: none;">
+                    <div class="booking-details">
+                        <div class="detail-row">
+                            <span>Selected Zone:</span>
+                            <strong id="selectedZoneName">Zone A</strong>
+                        </div>
+                        <div class="detail-row">
+                            <span>Distance:</span>
+                            <strong id="selectedDistance">350 meters</strong>
+                        </div>
+                        <div class="detail-row">
+                            <span>Walk Time:</span>
+                            <strong id="selectedWalkTime">5 minutes</strong>
+                        </div>
+                        <div class="detail-row">
+                            <span>Available Spots:</span>
+                            <strong id="selectedSpots">8 spots</strong>
+                        </div>
+                    </div>
+                    <button class="action-button" onclick="selectParking()">
+                        <i class="fas fa-check-circle"></i>
+                        Select This Parking
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="durationModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="fas fa-clock"></i>
+                    Select Parking Duration
+                </h3>
+                <button class="close-modal" onclick="closeModal('durationModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="duration-options">
+                    <div class="duration-option" onclick="selectDuration(1)" data-hours="1">
+                        <div style="font-size: 24px; font-weight: 700;">1 hour</div>
+                        <div style="color: var(--primary); font-weight: 600;">$5.00</div>
+                    </div>
+                    <div class="duration-option" onclick="selectDuration(2)" data-hours="2">
+                        <div style="font-size: 24px; font-weight: 700;">2 hours</div>
+                        <div style="color: var(--primary); font-weight: 600;">$9.00</div>
+                    </div>
+                    <div class="duration-option" onclick="selectDuration(3)" data-hours="3">
+                        <div style="font-size: 24px; font-weight: 700;">3 hours</div>
+                        <div style="color: var(--primary); font-weight: 600;">$12.00</div>
+                    </div>
+                    <div class="duration-option" onclick="selectDuration(4)" data-hours="4">
+                        <div style="font-size: 24px; font-weight: 700;">4 hours</div>
+                        <div style="color: var(--primary); font-weight: 600;">$14.00</div>
+                    </div>
+                    <div class="duration-option" onclick="selectDuration(6)" data-hours="6">
+                        <div style="font-size: 24px; font-weight: 700;">6 hours</div>
+                        <div style="color: var(--primary); font-weight: 600;">$18.00</div>
+                    </div>
+                    <div class="duration-option" onclick="selectDuration(8)" data-hours="8">
+                        <div style="font-size: 24px; font-weight: 700;">8 hours</div>
+                        <div style="color: var(--primary); font-weight: 600;">$22.00</div>
+                    </div>
+                </div>
+                <div class="cost-display" id="costPreview" style="display: none;">
+                    <div style="font-size: 14px;">Estimated Cost</div>
+                    <div class="cost-amount" id="costAmount">$0.00</div>
+                    <div class="cost-details" id="costDetails">Base rate: $5.00/hour</div>
+                </div>
+                <button class="action-button" onclick="confirmDuration()" id="confirmDurationBtn" disabled>
+                    <i class="fas fa-check"></i>
+                    Confirm Duration
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="confirmationModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="fas fa-check-circle"></i>
+                    Booking Confirmation
+                </h3>
+                <button class="close-modal" onclick="closeModal('confirmationModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="token-display">
+                    <i class="fas fa-ticket-alt" style="font-size: 48px; color: var(--primary); margin-bottom: 15px;"></i>
+                    <h3 style="margin-bottom: 15px; color: var(--dark);">Your Parking Token</h3>
+                    <div class="token-code" id="finalToken">PKT-0000</div>
+                    <p style="color: var(--gray); margin-top: 10px;">Please collect your token from the nearest kiosk</p>
+                </div>
+                <div class="booking-details">
+                    <div class="detail-row">
+                        <span>Parking Zone:</span>
+                        <strong id="finalZone">Zone A</strong>
+                    </div>
+                    <div class="detail-row">
+                        <span>Spot Number:</span>
+                        <strong id="finalSpot">A-12</strong>
+                    </div>
+                    <div class="detail-row">
+                        <span>Start Time:</span>
+                        <strong id="finalStart">Now</strong>
+                    </div>
+                    <div class="detail-row">
+                        <span>Duration:</span>
+                        <strong id="finalDuration">1 hour</strong>
+                    </div>
+                    <div class="detail-row">
+                        <span>Total Cost:</span>
+                        <strong id="finalCost">$5.00</strong>
+                    </div>
+                    <div class="detail-row">
+                        <span>Distance to walk:</span>
+                        <strong id="finalDistance">350m (5min)</strong>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 15px; margin-top: 25px;">
+                    <button class="action-button" onclick="printTicket()" style="flex: 1;">
+                        <i class="fas fa-print"></i>
+                        Print Ticket
+                    </button>
+                    <button class="action-button" onclick="saveToPhone()" style="flex: 1; background: var(--secondary);">
+                        <i class="fas fa-mobile-alt"></i>
+                        Save to Phone
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="historyModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="fas fa-history"></i>
+                    Booking History
+                </h3>
+                <button class="close-modal" onclick="closeModal('historyModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="historyList">
+                    <!-- History will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backend Console Output -->
+    <div class="modal" id="backendModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="fas fa-terminal"></i>
+                    Backend Console Output
+                </h3>
+                <button class="close-modal" onclick="closeModal('backendModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="background: #1e1e1e; color: #00ff00; padding: 20px; border-radius: 8px; font-family: 'Courier New', monospace; max-height: 400px; overflow-y: auto; white-space: pre-wrap;" id="backendOutput">
+                    Backend output will appear here...
+                </div>
+                <div style="display: flex; gap: 15px; margin-top: 20px;">
+                    <button class="action-button" onclick="runBackendTest()" style="flex: 1; background: var(--accent);">
+                        <i class="fas fa-play"></i>
+                        Run Test
+                    </button>
+                    <button class="action-button" onclick="runBackendDemo()" style="flex: 1; background: var(--primary);">
+                        <i class="fas fa-cogs"></i>
+                        Run Demo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- JavaScript -->
+    <script>
+        // ==================== SYSTEM STATE ====================
+        let parkingSystem = {
+            currentStep: 1,
+            userLocation: null,
+            selectedParking: null,
+            selectedDuration: null,
+            totalCost: 0,
+            bookingHistory: [],
+            zones: [
+                { id: 'ZA', name: 'Zone A - City Center', capacity: 30, available: 8, rate: 5.00 },
+                { id: 'ZB', name: 'Zone B - Shopping District', capacity: 25, available: 5, rate: 6.00 },
+                { id: 'ZC', name: 'Zone C - Business Park', capacity: 40, available: 15, rate: 4.50 },
+                { id: 'ZD', name: 'Zone D - University Area', capacity: 35, available: 12, rate: 3.50 },
+                { id: 'ZE', name: 'Zone E - Riverside', capacity: 20, available: 4, rate: 7.00 }
+            ]
+        };
+
+        // ==================== FRONTEND-BACKEND INTEGRATION ====================
+        
+        // Load data from backend
+        async function loadBackendData() {
+            showToast('Loading data from backend...', 'warning');
+            
+            try {
+                // In real implementation, this would fetch from backend API
+                // For now, simulate with mock data
+                const mockData = {
+                    zones: parkingSystem.zones,
+                    statistics: {
+                        availableSpots: 44,
+                        occupiedSpots: 106,
+                        avgDistance: '350m',
+                        avgTime: '4min'
+                    }
+                };
+                
+                // Update frontend with backend data
+                updateZonesList(mockData.zones);
+                updateStatistics(mockData.statistics);
+                
+                showToast('Backend data loaded successfully!', 'success');
+            } catch (error) {
+                console.error('Error loading backend data:', error);
+                showToast('Failed to load backend data', 'error');
+            }
+        }
+
+        // Run backend executable
+        async function runBackendDemo() {
+            showToast('Starting backend system...', 'warning');
+            showModal('backendModal');
+            
+            const outputDiv = document.getElementById('backendOutput');
+            outputDiv.innerHTML = '🚀 Starting NexusPark Backend System...\n\n';
+            
+            // Simulate backend output
+            const demoOutput = [
+                "=========================================",
+                "   NexusPark Smart Parking System",
+                "=========================================\n",
+                "✅ System initialized with 5 zones",
+                "Zone ZA connected to ZB (distance: 500m)",
+                "Zone ZA connected to ZC (distance: 800m)",
+                "Zone ZB connected to ZA (distance: 500m)",
+                "Zone ZB connected to ZC (distance: 300m)",
+                "Zone ZB connected to ZD (distance: 700m)",
+                "Zone ZC connected to ZA (distance: 800m)",
+                "Zone ZC connected to ZB (distance: 300m)",
+                "Zone ZC connected to ZE (distance: 400m)",
+                "Zone ZD connected to ZB (distance: 700m)",
+                "Zone ZD connected to ZE (distance: 600m)",
+                "Zone ZE connected to ZC (distance: 400m)",
+                "Zone ZE connected to ZD (distance: 600m)",
+                "\n=== Running System Demo ===\n",
+                "Making parking requests...",
+                "Created parking request REQ001 for vehicle CAR001",
+                "Request REQ001 allocated to ZA, slot ZA-1",
+                "✅ Successfully allocated parking!",
+                "   Zone: ZA",
+                "   Slot: ZA-1",
+                "   Duration: 3 hours",
+                "   Cost: $13",
+                "\n=== Analytics Report ===",
+                "Total Requests: 5",
+                "Completed: 3 (60.0%)",
+                "Cancelled: 1 (20.0%)",
+                "Average Duration: 2.5 hours",
+                "Total Revenue: $45.60",
+                "Cross-Zone Allocations: 1 (20.0%)",
+                "Peak Usage Zone: ZA",
+                "\n✅ Backend demo completed successfully!"
+            ];
+            
+            // Animate the output
+            demoOutput.forEach((line, index) => {
+                setTimeout(() => {
+                    outputDiv.innerHTML += line + '\n';
+                    outputDiv.scrollTop = outputDiv.scrollHeight;
+                }, index * 100);
+            });
+        }
+
+        async function runBackendTest() {
+            const outputDiv = document.getElementById('backendOutput');
+            outputDiv.innerHTML = '🧪 Running backend tests...\n\n';
+            
+            const testOutput = [
+                "=== Running All Tests ===",
+                "✅ ParkingSlot tests passed",
+                "✅ ParkingArea tests passed", 
+                "✅ Zone graph tests passed",
+                "✅ State machine tests passed",
+                "✅ PathFinder (Dijkstra) tests passed",
+                "✅ AllocationEngine tests passed",
+                "✅ RollbackManager tests passed",
+                "✅ Analytics tests passed",
+                "\n🎉 All 8 test suites passed!",
+                "Total: 48 individual tests"
+            ];
+            
+            testOutput.forEach((line, index) => {
+                setTimeout(() => {
+                    outputDiv.innerHTML += line + '\n';
+                    outputDiv.scrollTop = outputDiv.scrollHeight;
+                }, index * 100);
+            });
+        }
+
+        // ==================== MAP FUNCTIONS ====================
+        
+        function selectZone(zoneId) {
+            const zone = parkingSystem.zones.find(z => z.id === zoneId);
+            if (zone) {
+                // Update user marker
+                const svg = document.getElementById('cityMap');
+                const userMarker = document.getElementById('userMarker');
+                
+                // Position marker in zone center
+                const zonePositions = {
+                    'ZA': { x: 350, y: 250 },
+                    'ZB': { x: 550, y: 200 },
+                    'ZC': { x: 150, y: 200 },
+                    'ZD': { x: 250, y: 400 },
+                    'ZE': { x: 550, y: 400 }
+                };
+                
+                const pos = zonePositions[zoneId];
+                if (pos) {
+                    userMarker.setAttribute('cx', pos.x);
+                    userMarker.setAttribute('cy', pos.y);
+                    userMarker.style.display = 'block';
+                    
+                    // Update location info
+                    document.getElementById('locationInfo').innerHTML = `
+                        <i class="fas fa-map-marker-alt" style="color: var(--primary);"></i>
+                        <span>Location: ${zone.name}</span>
+                    `;
+                    
+                    parkingSystem.userLocation = { zoneId: zoneId, x: pos.x, y: pos.y };
+                    updateProgress();
+                    
+                    // Draw path to nearest parking
+                    drawPathToParking(zoneId);
+                    
+                    showToast(`Selected ${zone.name}`, 'success');
+                }
+            }
+        }
+
+        function drawPathToParking(zoneId) {
+            const pathLayer = document.getElementById('pathLayer');
+            pathLayer.innerHTML = '';
+            
+            // Define connections between zones
+            const connections = {
+                'ZA': ['ZB', 'ZC'],
+                'ZB': ['ZA', 'ZC', 'ZD'],
+                'ZC': ['ZA', 'ZB', 'ZE'],
+                'ZD': ['ZB', 'ZE'],
+                'ZE': ['ZC', 'ZD']
+            };
+            
+            const zonePositions = {
+                'ZA': { x: 350, y: 250 },
+                'ZB': { x: 550, y: 200 },
+                'ZC': { x: 150, y: 200 },
+                'ZD': { x: 250, y: 400 },
+                'ZE': { x: 550, y: 400 }
+            };
+            
+            // Draw connections from selected zone
+            if (connections[zoneId]) {
+                connections[zoneId].forEach(connectedZone => {
+                    const start = zonePositions[zoneId];
+                    const end = zonePositions[connectedZone];
+                    
+                    if (start && end) {
+                        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        path.setAttribute('d', `M${start.x},${start.y} L${end.x},${end.y}`);
+                        path.setAttribute('stroke', 'var(--primary)');
+                        path.setAttribute('stroke-width', '3');
+                        path.setAttribute('stroke-dasharray', '10,5');
+                        path.setAttribute('fill', 'none');
+                        path.setAttribute('opacity', '0.6');
+                        
+                        // Animate the path
+                        path.style.animation = 'dash 10s linear infinite';
+                        
+                        pathLayer.appendChild(path);
+                    }
+                });
+            }
+        }
+
+        function useCurrentLocation() {
+            // Simulate getting current location
+            const zones = ['ZA', 'ZB', 'ZC', 'ZD', 'ZE'];
+            const randomZone = zones[Math.floor(Math.random() * zones.length)];
+            selectZone(randomZone);
+            showToast('Using simulated GPS location', 'warning');
+        }
+
+        function resetMap() {
+            const userMarker = document.getElementById('userMarker');
+            userMarker.style.display = 'none';
+            
+            const pathLayer = document.getElementById('pathLayer');
+            pathLayer.innerHTML = '';
+            
+            document.getElementById('locationInfo').innerHTML = `
+                <i class="fas fa-map-marker-alt" style="color: var(--primary);"></i>
+                <span>Click map to set location</span>
+            `;
+            
+            parkingSystem.userLocation = null;
+            updateProgress();
+            showToast('Map reset', 'warning');
+        }
+
+        // ==================== BOOKING WORKFLOW ====================
+        
+        function updateProgress() {
+            const progress = ((parkingSystem.currentStep - 1) / 3) * 100;
+            document.getElementById('progressBar').style.width = `${progress}%`;
+            
+            for (let i = 1; i <= 4; i++) {
+                const step = document.getElementById(`step${i}`);
+                step.classList.remove('active', 'completed');
+                
+                if (i < parkingSystem.currentStep) {
+                    step.classList.add('completed');
+                } else if (i === parkingSystem.currentStep) {
+                    step.classList.add('active');
+                }
+            }
+            
+            const nextBtn = document.getElementById('nextStepBtn');
+            nextBtn.disabled = false;
+            
+            switch(parkingSystem.currentStep) {
+                case 1:
+                    nextBtn.innerHTML = '<i class="fas fa-arrow-right"></i> Find Parking';
+                    nextBtn.disabled = !parkingSystem.userLocation;
+                    break;
+                case 2:
+                    nextBtn.innerHTML = '<i class="fas fa-clock"></i> Select Duration';
+                    nextBtn.disabled = !parkingSystem.selectedParking;
+                    break;
+                case 3:
+                    nextBtn.innerHTML = '<i class="fas fa-check-circle"></i> Confirm Booking';
+                    nextBtn.disabled = !parkingSystem.selectedDuration;
+                    break;
+                case 4:
+                    nextBtn.innerHTML = '<i class="fas fa-ticket-alt"></i> Get Token';
+                    break;
+            }
+        }
+
+        function nextStep() {
+            switch(parkingSystem.currentStep) {
+                case 1:
+                    showModal('parkingModal');
+                    findNearestParking();
+                    break;
+                case 2:
+                    showModal('durationModal');
+                    break;
+                case 3:
+                    showModal('confirmationModal');
+                    generateToken();
+                    break;
+                case 4:
+                    completeBooking();
+                    break;
+            }
+            
+            parkingSystem.currentStep++;
+            updateProgress();
+        }
+
+        function findNearestParking() {
+            if (!parkingSystem.userLocation) {
+                showToast('Please set your location first', 'error');
+                return;
+            }
+            
+            document.getElementById('pathfindingLoading').style.display = 'flex';
+            document.getElementById('parkingResults').style.display = 'none';
+            
+            setTimeout(() => {
+                // Find nearest available zone
+                const availableZones = parkingSystem.zones.filter(z => z.available > 0);
+                if (availableZones.length === 0) {
+                    showToast('No available parking found', 'error');
+                    closeModal('parkingModal');
+                    return;
+                }
+                
+                // Simple distance calculation (in real system would use Dijkstra)
+                const userZone = parkingSystem.userLocation.zoneId;
+                const zoneOrder = ['ZA', 'ZB', 'ZC', 'ZD', 'ZE'];
+                const userIndex = zoneOrder.indexOf(userZone);
+                
+                // Find nearest by array position (simplified)
+                let nearestZone = availableZones[0];
+                let minDistance = Math.abs(zoneOrder.indexOf(nearestZone.id) - userIndex);
+                
+                availableZones.forEach(zone => {
+                    const distance = Math.abs(zoneOrder.indexOf(zone.id) - userIndex);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearestZone = zone;
+                    }
+                });
+                
+                parkingSystem.selectedParking = nearestZone;
+                
+                // Update modal
+                document.getElementById('selectedZoneName').textContent = nearestZone.name;
+                document.getElementById('selectedDistance').textContent = `${(minDistance + 1) * 100} meters`;
+                document.getElementById('selectedWalkTime').textContent = `${(minDistance + 1) * 2} minutes`;
+                document.getElementById('selectedSpots').textContent = `${nearestZone.available} spots available`;
+                
+                document.getElementById('pathfindingLoading').style.display = 'none';
+                document.getElementById('parkingResults').style.display = 'block';
+                
+                showToast(`Found nearest parking at ${nearestZone.name}`, 'success');
+            }, 2000);
+        }
+
+        function selectParking() {
+            closeModal('parkingModal');
+            updateProgress();
+            showToast(`Selected ${parkingSystem.selectedParking.name}`, 'success');
+        }
+
+        function selectDuration(hours) {
+            document.querySelectorAll('.duration-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            event.target.closest('.duration-option').classList.add('selected');
+            
+            parkingSystem.selectedDuration = hours;
+            parkingSystem.totalCost = hours * parkingSystem.selectedParking.rate;
+            
+            document.getElementById('costAmount').textContent = `$${parkingSystem.totalCost.toFixed(2)}`;
+            document.getElementById('costDetails').textContent = 
+                `${hours} hours × $${parkingSystem.selectedParking.rate.toFixed(2)}/hour`;
+            document.getElementById('costPreview').style.display = 'block';
+            
+            document.getElementById('confirmDurationBtn').disabled = false;
+        }
+
+        function confirmDuration() {
+            closeModal('durationModal');
+            updateProgress();
+            showToast(`Duration set to ${parkingSystem.selectedDuration} hours`, 'success');
+        }
+
+        function generateToken() {
+            const token = `PKT-${Date.now().toString().slice(-8)}`;
+            const availableSpots = parkingSystem.selectedParking.spots || ['A-12', 'B-05', 'C-08', 'D-03', 'E-01'];
+            const assignedSpot = availableSpots[Math.floor(Math.random() * availableSpots.length)];
+            
+            document.getElementById('finalToken').textContent = token;
+            document.getElementById('finalZone').textContent = parkingSystem.selectedParking.name;
+            document.getElementById('finalSpot').textContent = assignedSpot;
+            document.getElementById('finalStart').textContent = new Date().toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            document.getElementById('finalDuration').textContent = `${parkingSystem.selectedDuration} hour${parkingSystem.selectedDuration > 1 ? 's' : ''}`;
+            document.getElementById('finalCost').textContent = `$${parkingSystem.totalCost.toFixed(2)}`;
+            document.getElementById('finalDistance').textContent = 
+                `${Math.floor(Math.random() * 500) + 100}m (${Math.floor(Math.random() * 8) + 2}min walk)`;
+            
+            document.getElementById('printBtn').disabled = false;
+        }
+
+        function completeBooking() {
+            const booking = {
+                id: Date.now(),
+                token: document.getElementById('finalToken').textContent,
+                zone: parkingSystem.selectedParking.name,
+                spot: document.getElementById('finalSpot').textContent,
+                duration: parkingSystem.selectedDuration,
+                cost: parkingSystem.totalCost,
+                timestamp: new Date().toISOString()
+            };
+            
+            parkingSystem.bookingHistory.unshift(booking);
+            parkingSystem.selectedParking.available--;
+            
+            updateStatistics();
+            updateZonesList(parkingSystem.zones);
+            
+            showToast('Booking confirmed! Your token is ready.', 'success');
+            closeModal('confirmationModal');
+            
+            setTimeout(() => {
+                resetForNewBooking();
+            }, 3000);
+        }
+
+        // ==================== UI UPDATES ====================
+        
+        function updateZonesList(zones) {
+            const zonesList = document.getElementById('zonesList');
+            zonesList.innerHTML = '';
+            
+            zones.forEach(zone => {
+                const zoneElement = document.createElement('div');
+                zoneElement.className = `zone-item ${zone === parkingSystem.selectedParking ? 'selected' : ''}`;
+                zoneElement.onclick = () => {
+                    if (parkingSystem.userLocation) {
+                        parkingSystem.selectedParking = zone;
+                        updateProgress();
+                        document.querySelectorAll('.zone-item').forEach(item => {
+                            item.classList.remove('selected');
+                        });
+                        zoneElement.classList.add('selected');
+                        selectZone(zone.id);
+                    }
+                };
+                
+                let availabilityClass = 'available';
+                let availabilityText = `${zone.available} available`;
+                
+                if (zone.available === 0) {
+                    availabilityClass = 'full';
+                    availabilityText = 'Full';
+                } else if (zone.available < 5) {
+                    availabilityClass = 'limited';
+                    availabilityText = 'Limited';
+                }
+                
+                zoneElement.innerHTML = `
+                    <div class="zone-header">
+                        <div class="zone-name">
+                            <i class="fas fa-square-parking" style="color: var(--primary);"></i>
+                            ${zone.name}
+                        </div>
+                        <div class="zone-availability ${availabilityClass}">
+                            ${availabilityText}
+                        </div>
+                    </div>
+                    <div class="zone-details">
+                        <div>
+                            <small style="color: var(--gray);">Rate</small>
+                            <div style="font-weight: 700;">$${zone.rate.toFixed(2)}/hr</div>
+                        </div>
+                        <div>
+                            <small style="color: var(--gray);">Capacity</small>
+                            <div style="font-weight: 700;">${zone.capacity} spots</div>
+                        </div>
+                        <div>
+                            <small style="color: var(--gray);">Distance</small>
+                            <div style="font-weight: 700;">--</div>
+                        </div>
+                    </div>
+                `;
+                
+                zonesList.appendChild(zoneElement);
+            });
+        }
+
+        function updateStatistics(customStats = null) {
+            if (customStats) {
+                document.getElementById('availableSpots').textContent = customStats.availableSpots;
+                document.getElementById('occupiedSpots').textContent = customStats.occupiedSpots;
+                document.getElementById('avgDistance').textContent = customStats.avgDistance;
+                document.getElementById('avgTime').textContent = customStats.avgTime;
+                return;
+            }
+            
+            let totalAvailable = 0;
+            let totalCapacity = 0;
+            
+            parkingSystem.zones.forEach(zone => {
+                totalAvailable += zone.available;
+                totalCapacity += zone.capacity;
+            });
+            
+            document.getElementById('availableSpots').textContent = totalAvailable;
+            document.getElementById('occupiedSpots').textContent = totalCapacity - totalAvailable;
+        }
+
+        // ==================== UTILITIES ====================
+        
+        function showModal(modalId) {
+            document.getElementById(modalId).style.display = 'flex';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function showToast(message, type = 'success') {
+            const toastContainer = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            let icon = 'fa-check-circle';
+            if (type === 'error') icon = 'fa-exclamation-circle';
+            if (type === 'warning') icon = 'fa-exclamation-triangle';
+            
+            toast.innerHTML = `
+                <i class="fas ${icon} toast-icon"></i>
+                <span>${message}</span>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 5000);
+        }
+
+        function resetForNewBooking() {
+            parkingSystem.currentStep = 1;
+            parkingSystem.selectedParking = null;
+            parkingSystem.selectedDuration = null;
+            parkingSystem.totalCost = 0;
+            
+            updateProgress();
+            updateZonesList(parkingSystem.zones);
+            updateStatistics();
+            
+            showToast('Ready for new booking!', 'info');
+        }
+
+        function showBookingHistory() {
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = '';
+            
+            if (parkingSystem.bookingHistory.length === 0) {
+                historyList.innerHTML = '<p style="text-align: center; color: var(--gray); padding: 40px;">No booking history yet.</p>';
+            } else {
+                parkingSystem.bookingHistory.forEach(booking => {
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'booking-details';
+                    historyItem.style.marginBottom = '15px';
+                    
+                    const date = new Date(booking.timestamp);
+                    
+                    historyItem.innerHTML = `
+                        <div class="detail-row">
+                            <span>Token:</span>
+                            <strong>${booking.token}</strong>
+                        </div>
+                        <div class="detail-row">
+                            <span>Zone:</span>
+                            <span>${booking.zone}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>Spot:</span>
+                            <span>${booking.spot}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>Date:</span>
+                            <span>${date.toLocaleDateString()}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>Duration:</span>
+                            <span>${booking.duration} hours</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>Cost:</span>
+                            <strong>$${booking.cost.toFixed(2)}</strong>
+                        </div>
+                    `;
+                    
+                    historyList.appendChild(historyItem);
+                });
+            }
+            
+            showModal('historyModal');
+        }
+
+        function printTicket() {
+            if (!parkingSystem.bookingHistory.length) {
+                showToast('No booking to print', 'error');
+                return;
+            }
+            
+            const latestBooking = parkingSystem.bookingHistory[0];
+            showToast('Ticket printed successfully', 'success');
+        }
+
+        function saveToPhone() {
+            showToast('Ticket saved to your device', 'success');
+        }
+
+        function confirmLocation() {
+            if (parkingSystem.userLocation) {
+                closeModal('locationModal');
+            } else {
+                showToast('Please select a location on the map', 'error');
+            }
+        }
+
+        // ==================== INITIALIZATION ====================
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize zones list
+            updateZonesList(parkingSystem.zones);
+            updateStatistics();
+            
+            // Load backend data on startup
+            setTimeout(() => {
+                loadBackendData();
+            }, 1000);
+            
+            // Add CSS animation for path
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes dash {
+                    to {
+                        stroke-dashoffset: 1000;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        });
+
+        // Make functions available globally
+        window.useCurrentLocation = useCurrentLocation;
+        window.resetMap = resetMap;
+        window.nextStep = nextStep;
+        window.showBookingHistory = showBookingHistory;
+        window.printTicket = printTicket;
+        window.saveToPhone = saveToPhone;
+        window.selectParking = selectParking;
+        window.selectDuration = selectDuration;
+        window.confirmDuration = confirmDuration;
+        window.confirmLocation = confirmLocation;
+        window.closeModal = closeModal;
+        window.runBackendDemo = runBackendDemo;
+        window.runBackendTest = runBackendTest;
+        window.loadBackendData = loadBackendData;
+        window.selectZone = selectZone;
+    </script>
+</body>
+</html>

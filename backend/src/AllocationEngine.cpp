@@ -1,78 +1,68 @@
-#include "AllocationEngine.h"
+﻿#include "../include/AllocationEngine.h"
 #include <iostream>
-#include <sstream>
+#include <iomanip>
+#include <limits>
+#include <algorithm>
 
-// Constructor
+// AllocationEngine constructor
 AllocationEngine::AllocationEngine(Zone** zoneArray, int count)
     : zones(zoneArray), zoneCount(count) {
-    pathFinder = new PathFinder(count * 2);
-    std::cout << "Allocation Engine initialized with " << count << " zones" << std::endl;
+    pathFinder = new PathFinder(count);
 }
 
-// Destructor
+// AllocationEngine destructor
 AllocationEngine::~AllocationEngine() {
     delete pathFinder;
 }
 
 // Find available slot in specific zone
 std::string AllocationEngine::findAvailableSlotInZone(const std::string& zoneId) {
-    // Simplified - in full system would search through areas and slots
-    // For now, generate slot ID based on zone
-    static int slotCounter = 0;
-    slotCounter++;
-    
     for (int i = 0; i < zoneCount; i++) {
         if (zones[i]->getZoneId() == zoneId) {
             if (zones[i]->getAvailableSlots() > 0) {
-                std::stringstream ss;
-                ss << zoneId << "-" << slotCounter;
-                return ss.str();
+                // Allocate a slot
+                if (zones[i]->allocateSlot()) {
+                    // Generate slot ID
+                    static int slotCounter = 1;
+                    return zoneId + "-" + std::to_string(slotCounter++);
+                }
             }
+            break;
         }
     }
     return "";
 }
 
-// Calculate cost based on various factors
+// Calculate parking cost
 double AllocationEngine::calculateCost(
     const std::string& zoneId,
     int hours,
     bool crossZone,
     Vehicle* vehicle
 ) const {
-    // Find zone rate
-    double baseRate = 5.0; // Default
+    // Find zone to get hourly rate
+    double hourlyRate = 0.0;
     for (int i = 0; i < zoneCount; i++) {
         if (zones[i]->getZoneId() == zoneId) {
-            baseRate = zones[i]->getHourlyRate();
+            hourlyRate = zones[i]->getHourlyRate();
             break;
         }
     }
     
-    // Calculate base cost
-    double cost = baseRate * hours;
+    if (hourlyRate == 0.0) return 0.0;
     
-    // Apply cross-zone penalty
+    // Calculate cost: base rate × hours × vehicle multiplier × cross-zone multiplier
+    double cost = hourlyRate * hours;
+    cost *= vehicle->getTypeMultiplier();
+    
     if (crossZone) {
-        cost *= 1.5; // 50% penalty for cross-zone
-    }
-    
-    // Apply vehicle type multiplier
-    if (vehicle) {
-        cost *= vehicle->getTypeMultiplier();
-    }
-    
-    // Time-based pricing: first hour at full rate, additional hours at 80%
-    if (hours > 1) {
-        cost = baseRate + (baseRate * 0.8 * (hours - 1));
-        if (crossZone) cost *= 1.5;
-        if (vehicle) cost *= vehicle->getTypeMultiplier();
+        cost *= 1.5; // 50% penalty for cross-zone parking
     }
     
     return cost;
 }
 
-// Main allocation method
+// Main allocation function
 bool AllocationEngine::allocateParking(
     ParkingRequest* request,
     Vehicle* vehicle,
@@ -82,73 +72,74 @@ bool AllocationEngine::allocateParking(
     std::vector<std::string>& optimalPath,
     double& totalCost
 ) {
-    if (!request || !vehicle) {
-        std::cout << "Invalid request or vehicle" << std::endl;
-        return false;
-    }
-    
     std::string preferredZone = request->getPreferredZone();
-    bool crossZone = false;
     
-    // Try preferred zone first
+    // Step 1: Try to allocate in preferred zone
     allocatedSlot = findAvailableSlotInZone(preferredZone);
     if (!allocatedSlot.empty()) {
         allocatedZone = preferredZone;
-        optimalPath.clear();
         optimalPath.push_back(preferredZone);
-    } else {
-        // Preferred zone full, find nearest available zone
-        std::cout << "Zone " << preferredZone << " is full. Finding nearest available zone..." << std::endl;
-        allocatedZone = findNearestAvailableZone(preferredZone, optimalPath);
-        crossZone = true;
+        totalCost = calculateCost(preferredZone, durationHours, false, vehicle);
         
-        if (allocatedZone.empty()) {
-            std::cout << "No available parking found in any zone!" << std::endl;
-            return false;
-        }
-        
+        // Update request
+        return request->allocate(allocatedZone, allocatedSlot, totalCost, false);
+    }
+    
+    // Step 2: Preferred zone is full, find nearest available zone
+    allocatedZone = findNearestAvailableZone(preferredZone, optimalPath);
+    if (!allocatedZone.empty()) {
         allocatedSlot = findAvailableSlotInZone(allocatedZone);
-        if (allocatedSlot.empty()) {
-            std::cout << "Error: Could not allocate slot in zone " << allocatedZone << std::endl;
-            return false;
+        if (!allocatedSlot.empty()) {
+            totalCost = calculateCost(allocatedZone, durationHours, true, vehicle);
+            
+            // Update request
+            return request->allocate(allocatedZone, allocatedSlot, totalCost, true);
         }
     }
     
-    // Calculate cost
-    totalCost = calculateCost(allocatedZone, durationHours, crossZone, vehicle);
-    
-    // Allocate slot in zone
-    for (int i = 0; i < zoneCount; i++) {
-        if (zones[i]->getZoneId() == allocatedZone) {
-            zones[i]->allocateSlot();
-            break;
-        }
-    }
-    
-    // Update request
-    if (!request->allocate(allocatedZone, allocatedSlot, totalCost, crossZone)) {
-        std::cout << "Failed to update request state" << std::endl;
-        return false;
-    }
-    
-    std::cout << "✅ Successfully allocated parking!" << std::endl;
-    std::cout << "   Zone: " << allocatedZone << std::endl;
-    std::cout << "   Slot: " << allocatedSlot << std::endl;
-    std::cout << "   Duration: " << durationHours << " hours" << std::endl;
-    std::cout << "   Cost: $" << totalCost << std::endl;
-    if (crossZone) {
-        std::cout << "   Note: Cross-zone allocation (50% penalty)" << std::endl;
-    }
-    
-    return true;
+    // Step 3: No zones available
+    return false;
 }
 
-// Find nearest available zone
+// Find nearest zone with available slots
 std::string AllocationEngine::findNearestAvailableZone(
     const std::string& preferredZone,
     std::vector<std::string>& path
 ) {
-    return pathFinder->findNearestAvailableZone(preferredZone, zones, zoneCount, path);
+    std::string nearestZone;
+    int minDistance = std::numeric_limits<int>::max();
+    
+    // Check all zones
+    for (int i = 0; i < zoneCount; i++) {
+        std::string zoneId = zones[i]->getZoneId();
+        
+        // Skip preferred zone (already checked and full)
+        if (zoneId == preferredZone) continue;
+        
+        // Check if zone has available slots
+        if (zones[i]->getAvailableSlots() > 0) {
+            // Find shortest path to this zone
+            std::vector<std::string> currentPath = 
+                pathFinder->findShortestPath(
+                    zones[0], // Start from first zone (simplified)
+                    zones[i], 
+                    zones, 
+                    zoneCount
+                );
+            
+            // Calculate total distance
+            int distance = pathFinder->calculateDistance(currentPath, zones, zoneCount);
+            
+            // Update nearest zone if this one is closer
+            if (distance < minDistance && distance > 0) {
+                minDistance = distance;
+                nearestZone = zoneId;
+                path = currentPath;
+            }
+        }
+    }
+    
+    return nearestZone;
 }
 
 // Get total available slots
@@ -171,23 +162,28 @@ int AllocationEngine::getTotalCapacity() const {
 
 // Get overall utilization
 double AllocationEngine::getOverallUtilization() const {
-    int totalSlots = getTotalCapacity();
-    if (totalSlots == 0) return 0.0;
+    int totalCapacity = getTotalCapacity();
+    if (totalCapacity == 0) return 0.0;
     
-    int availableSlots = getTotalAvailableSlots();
-    return ((totalSlots - availableSlots) * 100.0) / totalSlots;
+    int usedSlots = totalCapacity - getTotalAvailableSlots();
+    return (static_cast<double>(usedSlots) / totalCapacity) * 100.0;
 }
 
 // Display zone status
 void AllocationEngine::displayZoneStatus() const {
-    std::cout << "\n=== Parking Zone Status ===" << std::endl;
+    std::cout << "\n=== ALLOCATION ENGINE - ZONE STATUS ===" << std::endl;
+    std::cout << "Total Zones: " << zoneCount << std::endl;
     std::cout << "Total Capacity: " << getTotalCapacity() << " slots" << std::endl;
-    std::cout << "Available: " << getTotalAvailableSlots() << " slots" << std::endl;
-    std::cout << "Overall Utilization: " << getOverallUtilization() << "%" << std::endl;
+    std::cout << "Available Slots: " << getTotalAvailableSlots() << std::endl;
+    std::cout << "Overall Utilization: " << std::fixed << std::setprecision(1) 
+              << getOverallUtilization() << "%" << std::endl;
     
-    std::cout << "\nZone Details:" << std::endl;
     for (int i = 0; i < zoneCount; i++) {
-        std::cout << "  " << zones[i]->toString() << std::endl;
+        std::cout << zones[i]->getZoneId() << ": " 
+                  << zones[i]->getAvailableSlots() << "/" 
+                  << zones[i]->getTotalSlots() << " available ("
+                  << std::fixed << std::setprecision(1) 
+                  << zones[i]->getUtilizationRate() << "%)" << std::endl;
     }
-    std::cout << "==========================\n" << std::endl;
 }
+

@@ -1,5 +1,4 @@
-#include "ParkingArea.h"
-#include <iostream>
+﻿#include "../include/ParkingArea.h"
 #include <sstream>
 
 // SlotNode constructor
@@ -7,9 +6,9 @@ SlotNode::SlotNode(ParkingSlot* s) : slot(s), next(nullptr) {}
 
 // ParkingArea constructor
 ParkingArea::ParkingArea(const std::string& id, const std::string& zone, int cap)
-    : areaId(id), zoneId(zone), capacity(cap), availableSlots(0), slotList(nullptr) {}
+    : areaId(id), zoneId(zone), capacity(cap), availableSlots(cap), slotList(nullptr) {}
 
-// Destructor
+// ParkingArea destructor
 ParkingArea::~ParkingArea() {
     SlotNode* current = slotList;
     while (current != nullptr) {
@@ -22,28 +21,20 @@ ParkingArea::~ParkingArea() {
 
 // Add slot to area
 bool ParkingArea::addSlot(ParkingSlot* slot) {
+    if (!slot) return false;
+    
     SlotNode* newNode = new SlotNode(slot);
+    newNode->next = slotList;
+    slotList = newNode;
     
-    if (slotList == nullptr) {
-        slotList = newNode;
-    } else {
-        SlotNode* current = slotList;
-        while (current->next != nullptr) {
-            current = current->next;
-        }
-        current->next = newNode;
-    }
-    
-    availableSlots++;
-    std::cout << "Added slot " << slot->getSlotId() << " to area " << areaId << std::endl;
     return true;
 }
 
-// Find first available slot
+// Find available slot in area
 ParkingSlot* ParkingArea::findAvailableSlot() const {
     SlotNode* current = slotList;
     while (current != nullptr) {
-        if (current->slot->getIsAvailable()) {
+        if (current->slot->canBeAllocated()) {
             return current->slot;
         }
         current = current->next;
@@ -63,42 +54,29 @@ ParkingSlot* ParkingArea::getSlotById(const std::string& slotId) const {
     return nullptr;
 }
 
-// Get available slots count
+// Get available count
 int ParkingArea::getAvailableCount() const {
-    int count = 0;
-    SlotNode* current = slotList;
-    while (current != nullptr) {
-        if (current->slot->getIsAvailable()) {
-            count++;
-        }
-        current = current->next;
-    }
-    return count;
+    return availableSlots;
 }
 
 // Get total capacity
 int ParkingArea::getTotalCapacity() const {
-    int count = 0;
-    SlotNode* current = slotList;
-    while (current != nullptr) {
-        count++;
-        current = current->next;
-    }
-    return count;
+    return capacity;
 }
 
 // Get utilization rate
 double ParkingArea::getUtilizationRate() const {
-    int total = getTotalCapacity();
-    if (total == 0) return 0.0;
-    return ((total - getAvailableCount()) * 100.0) / total;
+    if (capacity == 0) return 0.0;
+    double usedSlots = capacity - availableSlots;
+    return (usedSlots / capacity) * 100.0;
 }
 
-// Getters
+// Get area ID
 std::string ParkingArea::getAreaId() const {
     return areaId;
 }
 
+// Get zone ID
 std::string ParkingArea::getZoneId() const {
     return zoneId;
 }
@@ -106,10 +84,8 @@ std::string ParkingArea::getZoneId() const {
 // Convert to string
 std::string ParkingArea::toString() const {
     std::stringstream ss;
-    ss << "Area: " << areaId 
-       << " | Zone: " << zoneId
-       << " | Capacity: " << getTotalCapacity()
-       << " | Available: " << getAvailableCount()
-       << " | Utilization: " << getUtilizationRate() << "%";
+    ss << "Area " << areaId << " in Zone " << zoneId
+       << " (" << availableSlots << "/" << capacity << " available)"
+       << " Utilization: " << getUtilizationRate() << "%";
     return ss.str();
 }
