@@ -41,7 +41,6 @@ string buildHttpResponse(int status, const string& content, const string& conten
 
 // Serve frontend files
 string serveFrontend() {
-    // Read index.html
     FILE* file = fopen("../frontend/index.html", "rb");
     if (!file) {
         return buildHttpResponse(404, "Frontend not found", "text/plain");
@@ -63,9 +62,7 @@ string serveFrontend() {
 string handleApiRequest(const string& method, const string& path, const string& body) {
     cout << "API Request: " << method << " " << path << endl;
     
-    // GET /api/zones
     if (method == "GET" && path == "/api/zones") {
-        // Simulate zone data - YOU'LL CONNECT THIS TO REAL ParkingSystem
         string zonesJson = R"([
             {"zoneId":"ZA","totalSlots":20,"availableSlots":12,"hourlyRate":10},
             {"zoneId":"ZB","totalSlots":15,"availableSlots":8,"hourlyRate":12},
@@ -73,36 +70,26 @@ string handleApiRequest(const string& method, const string& path, const string& 
             {"zoneId":"ZD","totalSlots":30,"availableSlots":20,"hourlyRate":15},
             {"zoneId":"ZE","totalSlots":18,"availableSlots":10,"hourlyRate":11}
         ])";
-        
         return buildHttpResponse(200, jsonResponse(true, "Zones retrieved", zonesJson));
     }
     
-    // POST /api/request-parking
     if (method == "POST" && path == "/api/request-parking") {
-        // TODO: Parse JSON body and call parkingSystem->requestParking()
         string response = R"({
             "requestId": "REQ001",
             "allocatedZone": "ZA",
             "slotNumber": 5,
-            "totalCost": 30.0,
-            "estimatedPath": ["Entrance", "ZA"]
+            "totalCost": 30.0
         })";
-        
         return buildHttpResponse(200, jsonResponse(true, "Parking allocated", response));
     }
     
-    // GET /api/analytics
     if (method == "GET" && path == "/api/analytics") {
-        // TODO: Call parkingSystem->getAnalytics()
         string analytics = R"({
             "totalRequests": 50,
             "successfulRequests": 40,
             "completionRate": 80.0,
-            "totalRevenue": 450.0,
-            "mostOccupiedZone": "ZC",
-            "leastOccupiedZone": "ZE"
+            "totalRevenue": 450.0
         })";
-        
         return buildHttpResponse(200, jsonResponse(true, "Analytics data", analytics));
     }
     
@@ -110,37 +97,38 @@ string handleApiRequest(const string& method, const string& path, const string& 
 }
 
 int main() {
-    cout << "🚀 Starting NexusPark HTTP Server (Simple Version)..." << endl;
-    cout << "Frontend: http://localhost:8080" << endl;
+    cout << "🚀 Starting NexusPark HTTP Server on port 5000..." << endl;
+    cout << "Frontend: http://localhost:5000" << endl;
     cout << "APIs: /api/zones, /api/request-parking, /api/analytics" << endl;
     
     // Initialize parking system
     parkingSystem = make_unique<ParkingSystem>();
     parkingSystem->initializeZones();
+    cout << "✅ Parking system initialized with 5 zones." << endl;
     
     // Initialize Winsock
     WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-        cerr << "Failed to initialize Winsock" << endl;
+        cerr << "❌ Failed to initialize Winsock" << endl;
         return 1;
     }
     
     // Create socket
     SOCKET serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket == INVALID_SOCKET) {
-        cerr << "Failed to create socket" << endl;
+        cerr << "❌ Failed to create socket" << endl;
         WSACleanup();
         return 1;
     }
     
-    // Bind to port 8080
+    // Bind to port 5000
     sockaddr_in serverAddr;
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_addr.s_addr = INADDR_ANY;
-    serverAddr.sin_port = htons(8080);
+    serverAddr.sin_port = htons(5000);
     
     if (bind(serverSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
-        cerr << "Failed to bind to port 8080" << endl;
+        cerr << "❌ Failed to bind to port 5000. Error: " << WSAGetLastError() << endl;
         closesocket(serverSocket);
         WSACleanup();
         return 1;
@@ -148,13 +136,13 @@ int main() {
     
     // Listen for connections
     if (listen(serverSocket, 10) == SOCKET_ERROR) {
-        cerr << "Failed to listen" << endl;
+        cerr << "❌ Failed to listen" << endl;
         closesocket(serverSocket);
         WSACleanup();
         return 1;
     }
     
-    cout << "✅ Server running on http://localhost:8080" << endl;
+    cout << "✅ Server running on http://localhost:5000" << endl;
     cout << "Press Ctrl+C to stop" << endl;
     
     // Main server loop
@@ -168,22 +156,18 @@ int main() {
             continue;
         }
         
-        // Read request
         char buffer[4096];
         int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
         if (bytesReceived > 0) {
             buffer[bytesReceived] = '\0';
             string request(buffer);
             
-            // Parse request
             string method, path;
             stringstream requestStream(request);
             requestStream >> method >> path;
             
-            // Read body for POST requests
             string body;
             if (method == "POST") {
-                // Find body (after empty line)
                 size_t bodyPos = request.find("\r\n\r\n");
                 if (bodyPos != string::npos) {
                     body = request.substr(bodyPos + 4);
@@ -191,8 +175,6 @@ int main() {
             }
             
             string response;
-            
-            // Route requests
             if (path == "/" || path == "/index.html") {
                 response = serveFrontend();
             }
@@ -203,14 +185,12 @@ int main() {
                 response = buildHttpResponse(404, "Not Found", "text/plain");
             }
             
-            // Send response
             send(clientSocket, response.c_str(), response.length(), 0);
         }
         
         closesocket(clientSocket);
     }
     
-    // Cleanup
     closesocket(serverSocket);
     WSACleanup();
     return 0;
