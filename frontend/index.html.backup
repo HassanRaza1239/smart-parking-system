@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1161,7 +1161,7 @@
             
             // Add OpenStreetMap tiles
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors',
+                attribution: 'Â© OpenStreetMap contributors',
                 maxZoom: 19
             }).addTo(parkingSystem.map);
             
@@ -1476,7 +1476,7 @@
             // Update cost preview
             document.getElementById('costAmount').textContent = `$${parkingSystem.totalCost.toFixed(2)}`;
             document.getElementById('costDetails').textContent = 
-                `${hours} hours × $${parkingSystem.selectedParking.rate.toFixed(2)}/hour`;
+                `${hours} hours Ã— $${parkingSystem.selectedParking.rate.toFixed(2)}/hour`;
             document.getElementById('costPreview').style.display = 'block';
             
             // Enable confirm button
@@ -1658,8 +1658,8 @@
                     Available: ${zone.available}/${zone.capacity}<br>
                     Rate: $${zone.rate.toFixed(2)}/hour<br>
                     ${zone.available > 0 ? 
-                        '<span style="color: var(--primary); font-weight: bold;">✓ Available</span>' : 
-                        '<span style="color: var(--danger); font-weight: bold;">✗ Full</span>'}
+                        '<span style="color: var(--primary); font-weight: bold;">âœ“ Available</span>' : 
+                        '<span style="color: var(--danger); font-weight: bold;">âœ— Full</span>'}
                 `);
             });
         }
@@ -1906,3 +1906,4 @@
     </script>
 </body>
 </html>
+

@@ -1,0 +1,29 @@
+﻿# Build outputs
+*.exe
+*.o
+*.obj
+*.pdb
+*.ilk
+
+# Test files
+test.exe
+simple_server.exe
+nexuspark.exe
+
+# Backup files
+*.backup
+*.old
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# Crow framework (if not needed)
+crow/
+crow.h
+backend/crow/
+backend/crow.h
